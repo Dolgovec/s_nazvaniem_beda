@@ -1403,15 +1403,17 @@ $(document).ready(function(){
 		$(this).find('.user_comment_options:first').css("visibility","hidden");
 	});
 
-	$('.all_streams_wrapper').bind("DOMSubtreeModified",function(){
-		setStreamHover();
-
+	$('.all_streams_wrapper .mCSB_container').bind("DOMSubtreeModified",function(){
+		
 		$(".all_streams_wrapper").mCustomScrollbar({
 		 axis:"y",
 		 theme:"light",
 		 scrollInertia: 950,
 			mouseWheel:{ scrollAmount: 1000 }
 		});
+		
+		setStreamHover();
+
 	});
 	setStreamHover();
 	/*GROUP OF CUSTOM SELECTBOXES*/
