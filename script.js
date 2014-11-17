@@ -1683,6 +1683,6 @@ function setStreamHover() {
             $(this).find('.filter_on_pic').hide();
         },
         function () {
-            $(this).find('.filter_on_pic').show();
+            $(this).аfind('.filter_on_pic').show();
         });
 }
