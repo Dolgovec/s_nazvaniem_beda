@@ -1,36 +1,3 @@
-//INCLUDING PARTS IN ONE, U DON'T NEED THIS IN DEV I THINK
-$(function(){
-    $("#header").load("include/header.html");
-    $(".site_filter").load("include/menu.html");
-    $(".all_streams_wrapper, .all_rooms_wrapper").load("include/streams_list.html");
-    $(".top_category_rating").load("include/category_rating.html");
-    $(".block_before_streams").load("include/back_block.html");
-    $(".chat_buttons").load("include/chat_buttons.html");
-    $(".chat_wrapper").load("include/chat.html");
-    $(".room_userlist_page").load("include/room_userlist.html");
-    $(".bottom_media_zone").load("include/stream_anounses.html");
-    $(".article_list").load("include/article_list.html");
-    $(".best_articles").load("include/best_articles.html");
-    $(".create_news").load("include/create_article.html");
-    $(".article_comments_wrapper").load("include/article_comments.html");
-    $(".create_stream_popup").load("include/popup_create_stream.html");
-    $(".valute_popup").load("include/popup_valute.html");
-    $(".add_cash_popup").load("include/popup_add_cash.html");
-    $(".restore_pwd_popup").load("include/popup_forgot_password.html");
-    $(".registration_popup").load("include/popup_registration.html");
-    $(".search_popup").load("include/popup_search.html");
-    $(".options_popup").load("include/popup_options.html");
-    $(".sysmess_wrapper").load("include/popup_sysmess.html");
-    $(".how_much_donate_popup").load("include/popup_donate.html");
-    $(".change_pwd_popup").load("include/popup_change_password.html");
-    $(".check_pwd_popup").load("include/popup_check_passw.html");
-    $(".other_category_choose").load("include/popup_choose_category.html");
-    $(".create_room_popup").load("include/popup_create_room.html");
-    $(".autorization_popup").load("include/popup_authorization.html");
-    //second lvl include
-    setTimeout(function(){$('.switcher').load("include/switcher.html");},500);
-});
-
 // PLUGIN FOR FILLING A CIRCLE
 (function($){
     $.fn.rotator = function(options){
@@ -188,15 +155,42 @@ $(document).ready(function(){
             $('#user_popup .click_user_popup').toggle();
             $(this).toggleClass('active');
         });
-        //change class of subscribe category
-        $('.user_category_list_row').click(function() {
-            $('.user_category_list_row').removeClass('active');
-            $(this).addClass('active');
-        });
-        //change text and class when delete/restore from subscribes
-        $('.delete_from_favor').click(function(){
-            $(this).toggleClass('restore');
-        });
+		//change class of subscribe category
+		$('.user_category_list_row').click(function() {
+			$('.user_category_list_row').removeClass('active');
+			$(this).addClass('active');
+			$("#user_popup_favorite > .user_right_block > div").hide();
+			$("#user_popup_favorite > .user_right_block > div[data-type='" + $(this).data('type') + "']").show();
+		});
+
+		//change text and class when delete/restore from subscribes
+		$('.delete_from_favor').click(function(){
+			var csrfToken = $(".streamCSRF").html();
+			ignored = $(this).data('ignored');
+			zone = $(this).data('zone');
+			target = $(this).data('target');
+			target_id = $(this).data('target_id');
+			elem = $(this);
+			if($(this).hasClass('restore')){
+				if(ignored == 1){
+					action = 'add_ignore';
+				}
+				else {
+					action = 'add_favorite';
+				}
+			}
+			else {
+				action = 'remove';
+			}
+			$.post("/favorite/manage/addremove/zone/" + zone + "/target/" + target + "/target_id/" + target_id, {"YII_CSRF_TOKEN": csrfToken, "action": action}, function (data) {
+				if (data && data.error == false) {
+					elem.toggleClass('restore');
+				}
+				else {
+					alert("Some error occured!");
+				}
+			});
+		});
         //tabs in options in user popup
         $('.content_ignore_cell').click(function(){
             $('.user_right_block_chats_ignore').hide();
@@ -464,6 +458,7 @@ $(document).ready(function(){
                 $(this).find('.down_rating:first').css("visibility","hidden");
                 $(this).find('.user_comment_options:first').css("visibility","hidden");
                 $(this).find('.total_comment_rating').show();
+                $(this).find('.how_much_left_popup').hide();
                 $(this).find('.article_comment_rating').hide();
             });
 
@@ -1376,7 +1371,24 @@ $(document).ready(function(){
     }, 1500);
 });
 
-
+//for rating value
+window.set_rating_trackbar = function(max)
+{
+    $("#slider-range-rating").slider({
+        range: "min",
+        animate: false,
+        min: 1,
+        max: max,
+        step:1,
+        value: 1,
+        slide: function( event, ui ) {
+            $( "#slider-range-rating .ui-slider-handle" ).text(ui.value);
+            $("#slider-range-rating").parent().find('input').val(ui.value);
+        }
+    });
+    $( "#slider-range-rating .ui-slider-handle" ).text("1");
+    $( ".max_value" ).text(max);
+}
 
 //for range slider
 window.set_scale_lvl = function()
@@ -1429,48 +1441,9 @@ window.script_error_popup = function(error_text){
 
 /** t0s - общий код для всех страниц **/
 $(document).ready(function() {
+    "use strict";
 
-    var script_BE = (function(){
-        var allMethodsNames = {
-            'smiles': 'smile/get'
-        };
-        //Private
-        function getPhpUri() {
-            return '//'+ window.location.hostname +'/index.php?r=';
-        }
-        function getToken() {
-            return $('meta[name|=\'token\']').attr('content');
-        }
-        //Public
-        return {
-            getMethodName: function(key) {
-                return allMethodsNames[key] || console.log('ERROR >>> неправильно задан ключ к событию %k', key);
-            },
-            sendToPHP : function(type,param) {
-                var uri = getPhpUri() +type;
-                param = param || {};
-
-                param.YII_CSRF_TOKEN = getToken(); // Добавляем токен CSRF
-
-                // Request -> Response
-                $.post(uri, param, function(data, textStatus, jqXHR) {
-                    /*switch (type) {
-                     case 'smile/get':
-                     script_PubSub.publish('POST:smiles',jqXHR.responseText);
-                     break;
-                     default:
-                     console.log('sendToPhp unknown param %p', type);
-                     }*/
-                    script_PubSub.publish(type,jqXHR.responseText);
-                }).fail(function(){
-                    console.log('Ошибка отправки запроса к пхп');
-                });
-
-            }
-        };
-    })();
-
-    var script_PubSub = (function() {
+    window.script_PubSub = (function() {
 
         var myObject = {};
 
@@ -1537,6 +1510,345 @@ $(document).ready(function() {
         return myObject;
     }());
 
+    window.script_Tab = {
+        // биндим onfocus и определяем текущую вкладку
+        init: function(config) {
+            var that = this;
+            this.config = config;
+
+            // возможность хранить в localstorage объекты
+            Storage.prototype.setObject = function (key, value) {
+                this.setItem(key, JSON.stringify(value));
+            };
+            Storage.prototype.getObject = function (key) {
+                var value = this.getItem(key);
+                return value && JSON.parse(value);
+            };
+
+            this.pageExit = false;
+            this.clientId = this.config.clientId; // уникальное айди соединения с нодой для вкладки
+            localStorage.activeTab = that.clientId;
+
+            // при фокусе на вкладке значение айди меняется на текущее
+            $(window).on('focus', function() {
+                localStorage.activeTab = that.clientId;
+            });
+
+            this.bind();
+        },
+        isActive: function() {
+            var result = false;
+            if (this.clientId == localStorage.activeTab) {
+                result = true;
+            }
+            return result;
+        },
+        /**
+         *
+         * @param milisec {number} количество секунд от начала загрузски скрипта, до 50го сообщения из истории
+         */
+        setLogLoadTime: function(milisec) {
+            if (localStorage.LogsChatJsLoadTime) {
+                var mass = localStorage.getObject('LogsChatJsLoadTime');
+                mass.push(milisec);
+                localStorage.setObject('LogsChatJsLoadTime', mass);
+            } else {
+                localStorage.LogsChatJsLoadTime = '';
+                localStorage.setObject('LogsChatJsLoadTime', [milisec,milisec]);
+            }
+        },
+        getAverageLoadTime: function() {
+            var avg = 0;
+            if (localStorage.LogsChatJsLoadTime) {
+                var mass = localStorage.getObject('LogsChatJsLoadTime');
+                for (var i= 0, len=mass.length; i!=len; i++) {
+                    avg += mass[i];
+                }
+                avg = (avg / len-1) / 1000; //sec
+                avg = 'AVG: ' + avg + ' / LAST: ' + (mass[mass.length - 1])/1000;
+            } else {
+                console.log('WARNING >>> average time not ready yet, because of: first load or less then 50msg or some error');
+            }
+
+            return avg;
+        },
+        bind: function() {
+            var _this = this;
+            $(window).on('beforeunload', function() {
+                console.log('Page Exit');
+                _this.pageExit = true;
+                setTimeout(function () {
+                    console.log('ERROR: ложное срабатывание события');
+                }, 4000);
+            });
+        }
+    };
+
+    window.script_SockJsConnection = (function (my,pubSub) {
+        var _private = my._private = my._private || {},
+            _seal = my._seal = my._seal || function () {
+                delete my._private;
+                delete my._seal;
+                delete my._unseal;
+            },
+            _unseal = my._unseal = my._unseal || function () {
+                my._private = _private;
+                my._seal = _seal;
+                my._unseal = _unseal;
+            };
+
+        // permanent access to _private, _seal, and _unseal
+        _private.connCounter = 0;
+        _private.socetUri = getWebSocketUri();
+        _private.pubSub = pubSub || console.log('Warning >>> возможно не указана система pubSub');
+        _private.Config = {
+            'heartBeat' : 10000
+        };
+
+        _private.socket = connect();
+        _private.reconnect = ReConnect();
+
+        bind(_private.socket);
+
+        function connect() {
+            return new SockJS(_private.socetUri);
+        }
+
+        function ReConnect() {
+            var counter = 0,
+                status = false,
+                time;
+            var maxReconnTime = 15; //sec
+
+            function getReconnTime() {
+                // time =  Math.exp(counter); // вариант с экспонентой
+                if (counter < maxReconnTime) time = counter * 1000 + getRandomArbitrary(0,500); // в разное время
+                else time = maxReconnTime * 1000 + getRandomArbitrary(0,500);
+                return time;
+            }
+
+            function getRandomArbitrary(min, max) {
+                return Math.random() * (max - min) + min;
+            }
+
+            function start() {
+                time = getReconnTime();
+                counter++;
+                setTimeout(function() {
+                    _private.socket = connect();
+                    bind(_private.socket);
+                    console.log('WARNING >>> reconnection number %d reconnect time %d sec', counter, time/1000);
+                },time);
+                status = true;
+            }
+            function clear() {
+                status = false;
+                counter = 0;
+            }
+            return {
+                start: start,
+                clear: clear,
+                getStatus: function(){
+                    return status;
+                }
+            };
+        }
+
+        function getWebSocketUri() {
+            var _uri;
+            _uri = window.location.hostname;
+            if (_uri.indexOf('dev.funstream') > -1) { // dev server
+                _uri = '5.101.113.136';
+            } else if (_uri.indexOf('funstream') > -1) { // production server
+                _uri = '213.133.97.217';
+            } else if (_uri.indexOf('sc2tv.local') > -1) {
+                _uri = '192.168.200.2';
+            }
+            _uri = '//'+ _uri +':9999/websocket';
+            return _uri;
+        }
+
+
+        function bind(socket) {
+            _private.socket.onopen = function (evt) {
+                _private.pubSub.publish('NODEJS:open');
+                _private.connCounter++;
+                if (_private.connCounter > 1) {
+                    script_message_popup('Server', 'Соединение восстановлено');
+                }
+                _private.reconnect.clear();
+                console.log('INFO >>> open socket connetion');
+
+                _private.heartBeat = new HeartBeat(_private.socket,_private.Config.heartBeat);
+            };
+            _private.socket.onerror = function (e) {
+                throw new Error(e);
+            };
+            _private.socket.onclose = function (e) {
+                _private.pubSub.publish('NODEJS:Close', e);
+                if (_private.heartBeat) {
+                    _private.heartBeat.stop();
+                }
+
+                _private.socket = false;
+
+                // вывести сообщения в консоль, если это не закрытие вкладки или не переход по ссылке
+                if (!script_Tab.pageExit) {
+                    script_message_popup('Server', 'Потеряно соединение');
+                    _private.reconnect.start();
+                    console.log('WARNING >>> закрытие соединения с нодой %e', e);
+                }
+            };
+            _private.socket.onmessage = function (evt) {
+                _private.pubSub.publish('NODEJS:message', evt);
+                try {
+                    var received = JSON.parse(evt.data);
+                    //console.log(received);
+                } catch (e) {
+                    console.log('ERROR >>> Ошибка парсинга входящего сооблщения ' + e)
+                }
+                // ONMESSAGE TYPE
+                if (received) {
+                    console.log('NodeJS >>> message: type %t and mode %m', received['type'], received['mode']);
+                    switch (received['type']) {
+                        case 'system':
+                            switch (received['mode']) {
+                                case 'auth_req':
+                                    script_BE.sendToPHP('chat/auth', {clientID: received['data'].clientId});
+                                    _private.clientId = received['data'].clientId;
+                                    //console.log('clientid %d',_private.clientId);
+                                    $.ajaxSetup({
+                                        headers:{
+                                            'Conn-Id': _private.clientId //conn_id пользователя
+                                        }
+                                    });
+                                    script_Tab.init({
+                                        clientId: _private.clientId
+                                    });
+                                    break;
+                                case 'heartBeat':
+                                    if (_private.heartBeat) _private.heartBeat.setResponse();
+
+                                    _private.pubSub.publish('NODEJS:heartBeat', 'works');
+                                    break;
+                                case 'userObject':
+                                    console.log('UserObject >>> %o', received['data']);
+                                    _private.pubSub.publish('NODEJS:UserObject', received['data']);
+
+                                    break;
+                                case 'subscribe':
+                                    //console.log('Subscribed(from nodejs): ' + received['chat']);
+                                    _private.pubSub.publish('NODEJS:subscribed', received['chat']);
+                                    break;
+                                case 'info':
+                                    console.log(received['data']);
+                                    break;
+                                default:
+                                    break;
+                            }
+                            break;
+                        case 'message':
+                            _private.pubSub.publish('NODEJS:Messages', received);
+                            break;
+                        case 'notice':
+                            switch (received['mode']) {
+                                case 'normal':
+                                    script_message_popup('server', received['data'].msg);
+                                    break;
+                                default:
+                                    console.log('ERROR >>> неизвестный mode уведомления %s', received['mode']);
+                                    break;
+                            }
+                            break;
+                        default:
+                            console.log('Unknown type of message');
+                    }
+                }
+            };
+        }
+
+        /**
+         * Раз в определенный промежуток времени отсылает сообщение на WebSocketServer. Если за этот же промежуток
+         * времени ответ приходит, то снова высылается запрос. Иначе клиент закрывается.
+         * @param socket
+         * @param {number} sec интервал между запросами
+         * @constructor
+         */
+        function HeartBeat(socket,sec) {
+            var response;
+            var timeout;
+
+            startTimeout();
+
+            function startTimeout() {
+                timeout = setTimeout(function () {
+                    if (response || response === undefined) {
+                        socket.send(JSON.stringify({type:'system',mode:'heartBeat',data:{response:'response'}}));
+                        response = false;
+                        startTimeout();
+                    } else {
+                        socket.close();
+                    }
+                }, sec);
+            }
+
+            function setResponse() {
+                response = true;
+            }
+            function stop() {
+                clearTimeout(timeout);
+            }
+            return {
+                setResponse:setResponse,
+                stop: stop
+            }
+        }
+
+        my._unseal();
+        return my;
+    }(window.script_SockJsConnection || {},script_PubSub));
+
+
+    window.script_BE = (function(){
+        var allMethodsNames = {
+            'smiles': 'smile/get'
+        };
+        //Private
+        function getPhpUri() {
+            return '//'+ window.location.hostname +'/index.php?r=';
+        }
+        function getToken() {
+            return $('meta[name|=\'token\']').attr('content');
+        }
+        //Public
+        return {
+            getMethodName: function(key) {
+                return allMethodsNames[key] || console.log('ERROR >>> неправильно задан ключ к событию %k', key);
+            },
+            sendToPHP : function(type,param,additional) {
+                var uri = getPhpUri() +type;
+                param = param || {};
+
+                param.YII_CSRF_TOKEN = getToken(); // Добавляем токен CSRF
+
+                // Request -> Response
+                $.post(uri, param, function(data, textStatus, jqXHR) {
+                    /*switch (type) {
+                     case 'smile/get':
+                     script_PubSub.publish('POST:smiles',jqXHR.responseText);
+                     break;
+                     default:
+                     console.log('sendToPhp unknown param %p', type);
+                     }*/
+                    script_PubSub.publish('POST:' + type,[jqXHR.responseText,additional]);
+                }).fail(function(){
+                    console.log('Ошибка отправки запроса к пхп');
+                });
+
+            }
+        };
+    })();
+
 
     /**
      * Глобальная функция: выводит пользовательские уведомления.
@@ -1554,6 +1866,9 @@ $(document).ready(function() {
         duration = duration || 5000;
 
         var $wrap = $(elements.wrap);
+        if ($wrap.length < 1) {
+            console.log('ERROR >>> не странице нету блока для вывода уведомлений');
+        }
 
         /**
          * Инициализация
@@ -1611,8 +1926,9 @@ $(document).ready(function() {
                 console.log('ERROR >>> не задан параметр paramFor');
             }
             //console.log(script_BE.getMethodName('smiles'));
-            script_BE.sendToPHP(script_BE.getMethodName('smiles'),param);
-            var _token = script_PubSub.subscribe(script_BE.getMethodName('smiles'), function (topic, recHTML) {
+            script_BE.sendToPHP('smile/get',param);
+            var _token = script_PubSub.subscribe('POST:smile/get', function (topic, pubSubReceived) {
+                var recHTML = pubSubReceived[0];
                 console.log('smiles subscriber doing your work');
                 $(smilesContainer_ID).empty().append(recHTML);
 
